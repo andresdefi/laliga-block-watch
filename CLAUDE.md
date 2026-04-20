@@ -62,9 +62,12 @@ Three layers:
 - Project docs written.
 - `probe-runner/src/lbw_probe/atlas.py`: RIPE Atlas async client (TCP traceroute, sslcert, find_probes, get_results) - implemented.
 - `probe-runner/src/lbw_probe/targets.py`: Cloudflare /24 sampler + known-affected services resolver - implemented.
-- `probe-runner/tests/`: 8 tests passing. Pyright strict + ruff clean.
-- `schedule.py`, `detect.py`, `storage.py`, `cli.py`: still stubs.
-- No real measurements scheduled yet (needs RIPE_ATLAS_API_KEY + storage).
+- `probe-runner/src/lbw_probe/schedule.py`: football-data.org client + `is_match_window()` pure function - implemented.
+- `probe-runner/src/lbw_probe/storage.py`: psycopg3 async Storage class (probe_results, incidents, user_targets, matches) - implemented.
+- `probe-runner/migrations/001_init.sql`: initial Postgres schema - in place.
+- `probe-runner/tests/`: 14 tests passing. Pyright strict + ruff clean.
+- `detect.py`, `cli.py`: still stubs.
+- No real measurements scheduled yet (needs RIPE_ATLAS_API_KEY + FOOTBALL_DATA_API_KEY + live Postgres).
 - API and frontend: not started.
 
 ## Operational rules
