@@ -58,9 +58,14 @@ Three layers:
 
 ## Current status
 
-- Repo initialized.
+- Repo initialized, public on GitHub.
 - Project docs written.
-- Probe runner, detection, API, frontend: not started.
+- `probe-runner/src/lbw_probe/atlas.py`: RIPE Atlas async client (TCP traceroute, sslcert, find_probes, get_results) - implemented.
+- `probe-runner/src/lbw_probe/targets.py`: Cloudflare /24 sampler + known-affected services resolver - implemented.
+- `probe-runner/tests/`: 8 tests passing. Pyright strict + ruff clean.
+- `schedule.py`, `detect.py`, `storage.py`, `cli.py`: still stubs.
+- No real measurements scheduled yet (needs RIPE_ATLAS_API_KEY + storage).
+- API and frontend: not started.
 
 ## Operational rules
 
