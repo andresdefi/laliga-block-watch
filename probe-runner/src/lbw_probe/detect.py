@@ -28,9 +28,25 @@ from datetime import datetime
 from typing import Any, Callable, Iterable, Literal, Mapping
 
 from lbw_probe.schedule import Match
-from lbw_probe.storage import IncidentRow
 
 Outcome = Literal["success", "timeout", "refused", "other"]
+
+
+@dataclass(frozen=True)
+class IncidentRow:
+    """Detection output. Persisted verbatim by storage.record_incident.
+
+    Lives in this module rather than storage.py so that storage can freely
+    import ProbeObservation from here without creating a circular import.
+    """
+
+    target_ip: str
+    target_label: str
+    match_id: int | None
+    started_at: datetime
+    ended_at: datetime | None
+    affected_asns: list[int]
+    evidence: dict[str, Any]
 
 
 @dataclass(frozen=True)

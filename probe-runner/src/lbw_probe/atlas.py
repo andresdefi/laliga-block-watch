@@ -177,6 +177,18 @@ class AtlasClient:
             raw: list[dict[str, Any]] = resp.json()
             return raw
 
+    async def get_probe(self, probe_id: int) -> dict[str, Any] | None:
+        """Fetch a single probe's metadata. Returns None on 404."""
+        async with httpx.AsyncClient(timeout=self.timeout_s) as client:
+            resp = await client.get(
+                f"{self.base_url}/probes/{probe_id}/",
+                headers=self.headers(),
+            )
+            if resp.status_code == 404:
+                return None
+            resp.raise_for_status()
+            return dict(resp.json())
+
     async def find_probes(
         self,
         country_code: str,

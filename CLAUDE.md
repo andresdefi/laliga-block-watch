@@ -65,13 +65,16 @@ Three layers:
 - `probe-runner/src/lbw_probe/schedule.py`: football-data.org client + `is_match_window()` pure function - implemented.
 - `probe-runner/src/lbw_probe/storage.py`: psycopg3 async Storage class (probe_results, incidents, user_targets, matches) - implemented.
 - `probe-runner/src/lbw_probe/detect.py`: ProbeObservation + BaselineStats + DetectionConfig, `normalize_sslcert_result()`, `compute_baseline()`, `detect_block()` pure function with four gates (spain timeout rate, control success rate, healthy baseline, match window) - implemented.
-- `probe-runner/src/lbw_probe/cli.py`: typer commands `version`, `migrate`, `refresh-schedule`, `refresh-targets`, `dry-run`, `replay` - implemented.
-- `probe-runner/src/lbw_probe/orchestrator.py`: `build_plan`, `plan_summary`, `load_fixture`, `replay_fixture` - implemented. Zero network side effects. Live cycle orchestrator deliberately absent until we add probe metadata caching.
+- `probe-runner/src/lbw_probe/cli.py`: typer commands `version`, `migrate`, `refresh-schedule`, `refresh-targets`, `dry-run`, `replay`, `run-cycle` - implemented.
+- `probe-runner/src/lbw_probe/orchestrator.py`: `build_plan`, `plan_summary`, `load_fixture`, `replay_fixture` - side-effect-free.
+- `probe-runner/src/lbw_probe/live.py`: live Atlas cycle orchestrator - `CycleConfig`, `ProbeMetaCache`, `schedule_cycle`, `wait_for_results`, `normalize_cycle`, `run_live_cycle`, `estimate_credits`. Schedules sslcert measurements, polls for results, enriches with per-probe country/ASN, emits `ProbeResultRow` + `ProbeObservation`, optionally runs `detect_block`. This is the one module that actually burns RIPE Atlas credits.
+- `IncidentRow` now lives in `detect.py` (not storage.py) to break a circular import. `storage.py` imports it from `detect.py`.
+- `Storage.fetch_historical_observations(since, until)` and `Storage.fetch_active_match(now, pre, post)` implemented so `run-cycle` can load baseline and current match from Postgres.
 - `probe-runner/fixtures/sample_block.json`: synthetic bundle that trips the detector end-to-end. `lbw-probe replay fixtures/sample_block.json` works.
 - `probe-runner/migrations/001_init.sql`: initial Postgres schema - in place.
-- `probe-runner/tests/`: 31 tests passing. Pyright strict + ruff clean.
-- Not yet implemented: live Atlas scheduling (`run-cycle`), probe metadata cache, DB-backed baseline loader.
-- API and frontend: not started.
+- `probe-runner/tests/`: 34 tests passing. Pyright strict + ruff clean.
+- Not yet implemented: API (FastAPI), frontend (Next.js), OpenTimestamps notarization, volunteer browser probe SDK, auto-complaint PDF generator.
+- First live run: `lbw-probe migrate && lbw-probe refresh-schedule && lbw-probe run-cycle` (defaults are tiny: 2 targets x 3 regions x 1 probe = ~60 credits).
 
 ## Operational rules
 

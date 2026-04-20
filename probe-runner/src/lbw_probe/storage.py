@@ -20,6 +20,7 @@ from typing import Any
 import psycopg
 from psycopg.rows import dict_row
 
+from lbw_probe.detect import IncidentRow, ProbeObservation
 from lbw_probe.schedule import Match
 
 MIGRATIONS_DIR = Path(__file__).resolve().parent.parent.parent / "migrations"
@@ -38,17 +39,6 @@ class ProbeResultRow:
     outcome: str
     rtt_ms: float | None
     raw: dict[str, Any]
-
-
-@dataclass(frozen=True)
-class IncidentRow:
-    target_ip: str
-    target_label: str
-    match_id: int | None
-    started_at: datetime
-    ended_at: datetime | None
-    affected_asns: list[int]
-    evidence: dict[str, Any]
 
 
 @dataclass
@@ -154,6 +144,82 @@ class Storage:
         if row is None:
             raise RuntimeError("incident insert did not return an id")
         return int(row["id"])
+
+    async def fetch_historical_observations(
+        self,
+        since: datetime,
+        until: datetime | None = None,
+    ) -> list[ProbeObservation]:
+        """Return ProbeObservations for detection baselining.
+
+        Rows are read back from probe_results and shaped into the same type
+        the detector consumes. Target IPs are returned as plain strings (INET
+        is stringified by the driver).
+        """
+        q = (
+            "SELECT probe_id, asn, country_code, target_ip, target_label, "
+            "outcome, observed_at FROM probe_results "
+            "WHERE observed_at >= %s"
+        )
+        params: list[Any] = [since]
+        if until is not None:
+            q += " AND observed_at <= %s"
+            params.append(until)
+        q += " ORDER BY observed_at"
+
+        async with await psycopg.AsyncConnection.connect(self.database_url) as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                await cur.execute(q, tuple(params))  # pyright: ignore[reportArgumentType]
+                rows = await cur.fetchall()
+
+        observations: list[ProbeObservation] = []
+        for r in rows:
+            outcome = r["outcome"]
+            if outcome not in ("success", "timeout", "refused", "other"):
+                continue
+            observations.append(
+                ProbeObservation(
+                    probe_id=int(r["probe_id"]),
+                    asn=(int(r["asn"]) if r["asn"] is not None else None),
+                    country_code=str(r["country_code"]),
+                    target_ip=str(r["target_ip"]),
+                    target_label=str(r["target_label"]),
+                    outcome=outcome,
+                    observed_at=r["observed_at"],
+                )
+            )
+        return observations
+
+    async def fetch_active_match(
+        self,
+        now: datetime,
+        pre_minutes: int = 30,
+        post_minutes: int = 150,
+    ) -> Match | None:
+        """Return the first match whose broadcast window contains `now`."""
+        async with await psycopg.AsyncConnection.connect(self.database_url) as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                await cur.execute(
+                    """
+                    SELECT id, kickoff_utc, home, away, status
+                    FROM matches
+                    WHERE kickoff_utc - make_interval(mins => %s) <= %s
+                      AND kickoff_utc + make_interval(mins => %s) >= %s
+                    ORDER BY kickoff_utc
+                    LIMIT 1
+                    """,
+                    (pre_minutes, now, post_minutes, now),
+                )
+                row: dict[str, Any] | None = await cur.fetchone()
+        if row is None:
+            return None
+        return Match(
+            id=int(row["id"]),
+            kickoff_utc=row["kickoff_utc"],
+            home=str(row["home"]),
+            away=str(row["away"]),
+            status=str(row["status"]),
+        )
 
     async def list_verified_user_targets(self) -> list[dict[str, Any]]:
         async with await psycopg.AsyncConnection.connect(self.database_url) as conn:
