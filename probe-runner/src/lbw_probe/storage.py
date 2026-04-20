@@ -221,6 +221,18 @@ class Storage:
             status=str(row["status"]),
         )
 
+    async def prune_probe_results(self, older_than: datetime) -> int:
+        """Delete probe_results rows with observed_at < older_than. Returns rows deleted."""
+        async with await psycopg.AsyncConnection.connect(self.database_url) as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    "DELETE FROM probe_results WHERE observed_at < %s",
+                    (older_than,),
+                )
+                n = cur.rowcount
+            await conn.commit()
+        return int(n)
+
     async def list_verified_user_targets(self) -> list[dict[str, Any]]:
         async with await psycopg.AsyncConnection.connect(self.database_url) as conn:
             async with conn.cursor(row_factory=dict_row) as cur:

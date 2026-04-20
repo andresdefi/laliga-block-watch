@@ -179,12 +179,23 @@ def run_cycle(
     max_targets: int = typer.Option(2, help="Max targets to probe this cycle."),
     probes_per_region: int = typer.Option(1, help="Probes per region per target."),
     include_known_services: bool = typer.Option(True),
-    write: bool = typer.Option(True, "--write/--no-write", help="Persist to DB."),
+    write: bool = typer.Option(
+        False,
+        "--write/--no-write",
+        help="Persist to Postgres (requires DATABASE_URL). Default is stdout only.",
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Print one line per observation."
+    ),
     yes: bool = typer.Option(
         False, "--yes", "-y", help="Skip interactive confirmation."
     ),
 ) -> None:
-    """Run a LIVE measurement cycle against RIPE Atlas. Burns credits."""
+    """Run a LIVE measurement cycle against RIPE Atlas. Burns credits.
+
+    By default, nothing is written to Postgres - results go to stdout only.
+    Pass --write to persist (requires DATABASE_URL).
+    """
     _load_env()
     api_key = _require("RIPE_ATLAS_API_KEY")
     db_url = os.environ.get("DATABASE_URL") if write else None
@@ -262,6 +273,22 @@ def run_cycle(
             f"incidents={len(result.incidents)}"
         )
 
+        if verbose or storage is None:
+            for obs in result.observations:
+                asn_str = f"AS{obs.asn}" if obs.asn is not None else "AS?"
+                typer.echo(
+                    f"  [{obs.country_code} {asn_str} probe={obs.probe_id}] "
+                    f"{obs.target_ip}:443 -> {obs.outcome} "
+                    f"({obs.observed_at.isoformat()})"
+                )
+
+        for inc in result.incidents:
+            rate = float(inc.evidence.get("spain_timeout_rate", 0.0))
+            typer.echo(
+                f"  INCIDENT {inc.target_label} "
+                f"asns={inc.affected_asns} spain_timeout={rate:.0%}"
+            )
+
         if storage is not None:
             n_rows = await storage.record_probe_results(result.rows)
             typer.echo(f"  wrote {n_rows} probe_results rows")
@@ -271,6 +298,34 @@ def run_cycle(
                 typer.echo(f"  wrote {len(result.incidents)} incidents")
 
     asyncio.run(_plan_and_run())
+
+
+@app.command()
+def prune(
+    older_than_days: int = typer.Option(
+        30, help="Delete probe_results rows older than this many days."
+    ),
+    yes: bool = typer.Option(
+        False, "--yes", "-y", help="Skip interactive confirmation."
+    ),
+) -> None:
+    """Delete old probe_results rows. Never touches incidents or matches."""
+    _load_env()
+    db_url = _require("DATABASE_URL")
+
+    cutoff = datetime.now(tz=timezone.utc) - timedelta(days=older_than_days)
+    typer.echo(f"will delete probe_results older than {cutoff.isoformat()}")
+    if not yes and not typer.confirm("proceed?", default=False):
+        typer.echo("aborted")
+        raise typer.Exit(code=1)
+
+    storage = Storage(database_url=db_url)
+
+    async def _run() -> int:
+        return await storage.prune_probe_results(older_than=cutoff)
+
+    n = asyncio.run(_run())
+    typer.echo(f"deleted {n} row(s)")
 
 
 if __name__ == "__main__":

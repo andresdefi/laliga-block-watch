@@ -65,7 +65,7 @@ Three layers:
 - `probe-runner/src/lbw_probe/schedule.py`: football-data.org client + `is_match_window()` pure function - implemented.
 - `probe-runner/src/lbw_probe/storage.py`: psycopg3 async Storage class (probe_results, incidents, user_targets, matches) - implemented.
 - `probe-runner/src/lbw_probe/detect.py`: ProbeObservation + BaselineStats + DetectionConfig, `normalize_sslcert_result()`, `compute_baseline()`, `detect_block()` pure function with four gates (spain timeout rate, control success rate, healthy baseline, match window) - implemented.
-- `probe-runner/src/lbw_probe/cli.py`: typer commands `version`, `migrate`, `refresh-schedule`, `refresh-targets`, `dry-run`, `replay`, `run-cycle` - implemented.
+- `probe-runner/src/lbw_probe/cli.py`: typer commands `version`, `migrate`, `refresh-schedule`, `refresh-targets`, `dry-run`, `replay`, `run-cycle`, `prune` - implemented. `run-cycle` defaults to `--no-write` so the first live test does not require Postgres; pass `--write` to persist.
 - `probe-runner/src/lbw_probe/orchestrator.py`: `build_plan`, `plan_summary`, `load_fixture`, `replay_fixture` - side-effect-free.
 - `probe-runner/src/lbw_probe/live.py`: live Atlas cycle orchestrator - `CycleConfig`, `ProbeMetaCache`, `schedule_cycle`, `wait_for_results`, `normalize_cycle`, `run_live_cycle`, `estimate_credits`. Schedules sslcert measurements, polls for results, enriches with per-probe country/ASN, emits `ProbeResultRow` + `ProbeObservation`, optionally runs `detect_block`. This is the one module that actually burns RIPE Atlas credits.
 - `IncidentRow` now lives in `detect.py` (not storage.py) to break a circular import. `storage.py` imports it from `detect.py`.
@@ -83,6 +83,22 @@ Three layers:
 - Do not incorporate any entity in Spain if a legal entity is needed later.
 - Do not ship any circumvention functionality in this repo.
 - Every external claim on the dashboard must be backed by a specific, timestamped, replayable measurement in the database. No guesses, no aggregated-for-style numbers. A regulator must be able to click any incident and see the raw probe data that proves it.
+
+## Retention / data growth
+
+Only one table grows unbounded: `probe_results`. The rest are small:
+- `incidents` - one row per detected block. Tens per match day at worst. Never pruned; this is the whole evidentiary record.
+- `matches` - one row per La Liga fixture. Bounded by season size.
+- `user_targets` - one row per citizen submission. Negligible.
+
+`probe_results` growth:
+- Each row ~1-2 KB (including the raw Atlas JSON payload).
+- Example: 100 targets x 3 regions x 3 probes x 24 cycles/day ≈ 21 600 rows/day ≈ 40 MB/day.
+- Baseline detection uses the last 30 days only.
+
+Rule: delete `probe_results` older than 30 days. Run `lbw-probe prune --older-than-days 30` daily (via cron or a scheduled container). Incidents are never pruned.
+
+If long-term graphs or trend analysis become useful later, add a separate rollup table that stores daily per-(ASN, target) success/timeout counts; that stays small forever and can be kept indefinitely while the raw `probe_results` still gets pruned.
 
 ## Conventions
 
