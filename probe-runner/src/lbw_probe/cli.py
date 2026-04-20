@@ -13,6 +13,12 @@ from pathlib import Path
 import typer
 from dotenv import load_dotenv
 
+from lbw_probe.orchestrator import (
+    build_plan,
+    load_fixture,
+    plan_summary,
+    replay_fixture,
+)
 from lbw_probe.schedule import fetch_matches
 from lbw_probe.storage import Storage
 from lbw_probe.targets import (
@@ -96,6 +102,66 @@ def refresh_targets(
     cf_count, svc_count = asyncio.run(_run())
     typer.echo(f"cloudflare_sample targets: {cf_count}")
     typer.echo(f"known_service targets:     {svc_count}")
+
+
+@app.command("dry-run")
+def dry_run(
+    probes_per_region: int = typer.Option(
+        3, help="Probes to schedule per region per target."
+    ),
+    include_known_services: bool = typer.Option(True),
+) -> None:
+    """Print what a live measurement cycle would schedule. No Atlas calls."""
+    _load_env()
+
+    async def _run() -> int:
+        cidrs = await fetch_cloudflare_v4_ranges()
+        cf_targets = targets_from_cidrs(cidrs)
+        service_targets = (
+            await resolve_known_services(KNOWN_AFFECTED_SERVICES)
+            if include_known_services
+            else []
+        )
+        all_targets = cf_targets + service_targets
+        plan = build_plan(all_targets, probes_per_region=probes_per_region)
+        typer.echo(plan_summary(plan))
+        return plan.total_probe_observations
+
+    asyncio.run(_run())
+
+
+@app.command()
+def replay(
+    fixture: Path = typer.Argument(..., help="Path to JSON fixture bundle."),
+    write: bool = typer.Option(
+        False, "--write", help="Persist detected incidents to DATABASE_URL."
+    ),
+) -> None:
+    """Run the detector over a recorded/synthetic observations fixture."""
+    _load_env()
+    bundle = load_fixture(fixture)
+    incidents = replay_fixture(bundle)
+    typer.echo(f"detected {len(incidents)} incident(s)")
+    for inc in incidents:
+        rate = float(inc.evidence.get("spain_timeout_rate", 0.0))
+        typer.echo(
+            f"  - {inc.target_label} "
+            f"asns={inc.affected_asns} "
+            f"spain_timeout={rate:.0%}"
+        )
+    if write and incidents:
+        db_url = _require("DATABASE_URL")
+        storage = Storage(database_url=db_url)
+
+        async def _persist() -> int:
+            n = 0
+            for inc in incidents:
+                await storage.record_incident(inc)
+                n += 1
+            return n
+
+        n = asyncio.run(_persist())
+        typer.echo(f"wrote {n} incident(s) to DB")
 
 
 if __name__ == "__main__":

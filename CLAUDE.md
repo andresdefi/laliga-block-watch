@@ -65,10 +65,12 @@ Three layers:
 - `probe-runner/src/lbw_probe/schedule.py`: football-data.org client + `is_match_window()` pure function - implemented.
 - `probe-runner/src/lbw_probe/storage.py`: psycopg3 async Storage class (probe_results, incidents, user_targets, matches) - implemented.
 - `probe-runner/src/lbw_probe/detect.py`: ProbeObservation + BaselineStats + DetectionConfig, `normalize_sslcert_result()`, `compute_baseline()`, `detect_block()` pure function with four gates (spain timeout rate, control success rate, healthy baseline, match window) - implemented.
-- `probe-runner/src/lbw_probe/cli.py`: typer commands `version`, `migrate`, `refresh-schedule`, `refresh-targets` - implemented.
+- `probe-runner/src/lbw_probe/cli.py`: typer commands `version`, `migrate`, `refresh-schedule`, `refresh-targets`, `dry-run`, `replay` - implemented.
+- `probe-runner/src/lbw_probe/orchestrator.py`: `build_plan`, `plan_summary`, `load_fixture`, `replay_fixture` - implemented. Zero network side effects. Live cycle orchestrator deliberately absent until we add probe metadata caching.
+- `probe-runner/fixtures/sample_block.json`: synthetic bundle that trips the detector end-to-end. `lbw-probe replay fixtures/sample_block.json` works.
 - `probe-runner/migrations/001_init.sql`: initial Postgres schema - in place.
-- `probe-runner/tests/`: 26 tests passing. Pyright strict + ruff clean.
-- No real measurements scheduled yet (needs RIPE_ATLAS_API_KEY + FOOTBALL_DATA_API_KEY + live Postgres).
+- `probe-runner/tests/`: 31 tests passing. Pyright strict + ruff clean.
+- Not yet implemented: live Atlas scheduling (`run-cycle`), probe metadata cache, DB-backed baseline loader.
 - API and frontend: not started.
 
 ## Operational rules

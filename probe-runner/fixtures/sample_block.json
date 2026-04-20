@@ -1,0 +1,61 @@
+{
+  "_comment": "Synthetic bundle that trips detect_block. Three Spanish probes on two ASNs all time out during a LaLiga match window, while a Portuguese and a French probe succeed. Baseline shows both Spanish ASNs normally reach this Cloudflare IP without issue.",
+  "match": {
+    "id": 42,
+    "kickoff_utc": "2026-04-25T19:00:00Z",
+    "home": "Real Madrid",
+    "away": "Barcelona",
+    "status": "FINISHED"
+  },
+  "observations": [
+    {
+      "probe_id": 1001,
+      "asn": 3352,
+      "country_code": "ES",
+      "target_ip": "104.16.0.1",
+      "target_label": "cloudflare:104.16.0.0/24:104.16.0.1",
+      "outcome": "timeout",
+      "observed_at": "2026-04-25T19:12:00Z"
+    },
+    {
+      "probe_id": 1002,
+      "asn": 3352,
+      "country_code": "ES",
+      "target_ip": "104.16.0.1",
+      "target_label": "cloudflare:104.16.0.0/24:104.16.0.1",
+      "outcome": "timeout",
+      "observed_at": "2026-04-25T19:14:00Z"
+    },
+    {
+      "probe_id": 1003,
+      "asn": 12479,
+      "country_code": "ES",
+      "target_ip": "104.16.0.1",
+      "target_label": "cloudflare:104.16.0.0/24:104.16.0.1",
+      "outcome": "timeout",
+      "observed_at": "2026-04-25T19:13:00Z"
+    },
+    {
+      "probe_id": 2001,
+      "asn": 3243,
+      "country_code": "PT",
+      "target_ip": "104.16.0.1",
+      "target_label": "cloudflare:104.16.0.0/24:104.16.0.1",
+      "outcome": "success",
+      "observed_at": "2026-04-25T19:12:30Z"
+    },
+    {
+      "probe_id": 3001,
+      "asn": 5410,
+      "country_code": "FR",
+      "target_ip": "104.16.0.1",
+      "target_label": "cloudflare:104.16.0.0/24:104.16.0.1",
+      "outcome": "success",
+      "observed_at": "2026-04-25T19:13:15Z"
+    }
+  ],
+  "baseline": [
+    {"asn": 3352, "target_ip": "104.16.0.1", "success_rate": 0.99, "sample_size": 500},
+    {"asn": 12479, "target_ip": "104.16.0.1", "success_rate": 0.98, "sample_size": 500}
+  ]
+}
