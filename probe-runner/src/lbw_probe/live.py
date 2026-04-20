@@ -39,7 +39,10 @@ from lbw_probe.schedule import Match
 from lbw_probe.storage import ProbeResultRow
 from lbw_probe.targets import Target
 
-SSLCERT_CREDITS_PER_PROBE = 10
+# RIPE Atlas charges 20 credits for one sslcert measurement on one probe.
+# Verified against the API: submitting a 1-probe sslcert returns a billing
+# record of "cost: 20.0cr" when the account has insufficient balance.
+SSLCERT_CREDITS_PER_PROBE = 20
 
 
 @dataclass(frozen=True)

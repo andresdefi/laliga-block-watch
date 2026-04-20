@@ -15,8 +15,8 @@ def test_estimate_credits_respects_max_targets_cap() -> None:
         regions=("ES", "PT", "FR"), probes_per_region=1, max_targets=2
     )
     # Even if there are many targets available, only max_targets are probed.
-    assert estimate_credits(cfg, target_count=1000) == 2 * 3 * 1 * 10
-    assert estimate_credits(cfg, target_count=1) == 1 * 3 * 1 * 10
+    assert estimate_credits(cfg, target_count=1000) == 2 * 3 * 1 * 20
+    assert estimate_credits(cfg, target_count=1) == 1 * 3 * 1 * 20
 
 
 def test_estimate_credits_zero_targets() -> None:
@@ -26,5 +26,5 @@ def test_estimate_credits_zero_targets() -> None:
 
 def test_estimate_credits_scales_with_probes() -> None:
     cfg = CycleConfig(regions=("ES",), probes_per_region=3, max_targets=10)
-    # 10 targets * 1 region * 3 probes * 10 credits/probe
-    assert estimate_credits(cfg, target_count=10) == 300
+    # 10 targets * 1 region * 3 probes * 20 credits/probe
+    assert estimate_credits(cfg, target_count=10) == 600
