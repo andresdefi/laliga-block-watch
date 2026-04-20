@@ -64,9 +64,10 @@ Three layers:
 - `probe-runner/src/lbw_probe/targets.py`: Cloudflare /24 sampler + known-affected services resolver - implemented.
 - `probe-runner/src/lbw_probe/schedule.py`: football-data.org client + `is_match_window()` pure function - implemented.
 - `probe-runner/src/lbw_probe/storage.py`: psycopg3 async Storage class (probe_results, incidents, user_targets, matches) - implemented.
+- `probe-runner/src/lbw_probe/detect.py`: ProbeObservation + BaselineStats + DetectionConfig, `normalize_sslcert_result()`, `compute_baseline()`, `detect_block()` pure function with four gates (spain timeout rate, control success rate, healthy baseline, match window) - implemented.
+- `probe-runner/src/lbw_probe/cli.py`: typer commands `version`, `migrate`, `refresh-schedule`, `refresh-targets` - implemented.
 - `probe-runner/migrations/001_init.sql`: initial Postgres schema - in place.
-- `probe-runner/tests/`: 14 tests passing. Pyright strict + ruff clean.
-- `detect.py`, `cli.py`: still stubs.
+- `probe-runner/tests/`: 26 tests passing. Pyright strict + ruff clean.
 - No real measurements scheduled yet (needs RIPE_ATLAS_API_KEY + FOOTBALL_DATA_API_KEY + live Postgres).
 - API and frontend: not started.
 
